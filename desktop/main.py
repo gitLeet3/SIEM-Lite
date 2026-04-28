@@ -5,7 +5,9 @@ from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
+from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
 from kivy.clock import Clock
+from kivy.graphics import Color, Rectangle
 
 API_BASE = "http://127.0.0.1:8000/api"
 
@@ -14,7 +16,7 @@ def get_events():
     try:
         response = requests.get(f"{API_BASE}/events/")
         return response.json()
-    except Exception as e:
+    except Exception:
         return []
 
 
@@ -22,64 +24,48 @@ def get_alerts():
     try:
         response = requests.get(f"{API_BASE}/alerts/")
         return response.json()
-    except Exception as e:
+    except Exception:
         return []
 
 
-class EventRow(BoxLayout):
-    def __init__(self, event, **kwargs):
-        super().__init__(**kwargs)
-        self.orientation = 'horizontal'
-        self.size_hint_y = None
-        self.height = 40
-        self.padding = [5, 2]
-        self.spacing = 5
+def severity_color(severity):
+    colors = {
+        'critical': (1, 0.2, 0.2, 1),
+        'high':     (1, 0.5, 0.1, 1),
+        'warning':  (1, 0.8, 0.2, 1),
+        'medium':   (1, 0.8, 0.2, 1),
+        'info':     (1, 1, 1, 1),
+    }
+    return colors.get(severity, (1, 1, 1, 1))
 
-        color = self._severity_color(event.get('severity'))
 
-        self.add_widget(Label(
-            text=event.get('timestamp', '')[:19],
-            size_hint_x=0.2,
-            color=color,
-            font_size=12
+def make_header(columns):
+    row = BoxLayout(
+        orientation='horizontal',
+        size_hint_y=None,
+        height=36,
+        padding=[5, 4],
+        spacing=5
+    )
+    for text, hint in columns:
+        row.add_widget(Label(
+            text=text,
+            size_hint_x=hint,
+            font_size=12,
+            bold=True,
+            color=(0.6, 0.6, 0.6, 1)
         ))
-        self.add_widget(Label(
-            text=event.get('source', ''),
-            size_hint_x=0.1,
-            color=color,
-            font_size=12
-        ))
-        self.add_widget(Label(
-            text=event.get('category', ''),
-            size_hint_x=0.2,
-            color=color,
-            font_size=12
-        ))
-        self.add_widget(Label(
-            text=event.get('source_ip') or '',
-            size_hint_x=0.2,
-            color=color,
-            font_size=12
-        ))
-        self.add_widget(Label(
-            text=event.get('severity', ''),
-            size_hint_x=0.15,
-            color=color,
-            font_size=12
-        ))
-        self.add_widget(Label(
-            text=event.get('outcome') or '',
-            size_hint_x=0.15,
-            color=color,
-            font_size=12
-        ))
+    return row
 
-    def _severity_color(self, severity):
-        if severity == 'critical':
-            return (1, 0.2, 0.2, 1)
-        elif severity == 'warning':
-            return (1, 0.8, 0.2, 1)
-        return (1, 1, 1, 1)
+
+def make_separator():
+    sep = BoxLayout(size_hint_y=None, height=1)
+    with sep.canvas:
+        Color(0.2, 0.2, 0.2, 1)
+        sep.rect = Rectangle(pos=sep.pos, size=sep.size)
+    sep.bind(pos=lambda s, v: setattr(s.rect, 'pos', v))
+    sep.bind(size=lambda s, v: setattr(s.rect, 'size', v))
+    return sep
 
 
 class AlertRow(BoxLayout):
@@ -87,111 +73,204 @@ class AlertRow(BoxLayout):
         super().__init__(**kwargs)
         self.orientation = 'horizontal'
         self.size_hint_y = None
-        self.height = 40
+        self.height = 44
+        self.padding = [5, 4]
+        self.spacing = 5
+
+        color = severity_color(alert.get('severity'))
+
+        fields = [
+            (alert.get('created_at', '')[:19], 0.15),
+            (alert.get('rule', ''), 0.12),
+            (alert.get('severity', '').upper(), 0.08),
+            (alert.get('status', ''), 0.08),
+            (alert.get('source_ip') or '', 0.12),
+            (alert.get('username') or '', 0.10),
+            (alert.get('description', ''), 0.35),
+        ]
+
+        for text, hint in fields:
+            self.add_widget(Label(
+                text=text,
+                size_hint_x=hint,
+                color=color,
+                font_size=11,
+                text_size=(None, None),
+                halign='left',
+                valign='middle'
+            ))
+
+
+class EventRow(BoxLayout):
+    def __init__(self, event, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = 'horizontal'
+        self.size_hint_y = None
+        self.height = 36
         self.padding = [5, 2]
         self.spacing = 5
 
-        color = self._severity_color(alert.get('severity'))
+        color = severity_color(event.get('severity'))
 
-        self.add_widget(Label(
-            text=alert.get('created_at', '')[:19],
-            size_hint_x=0.2,
-            color=color,
-            font_size=12
-        ))
-        self.add_widget(Label(
-            text=alert.get('rule', ''),
-            size_hint_x=0.2,
-            color=color,
-            font_size=12
-        ))
-        self.add_widget(Label(
-            text=alert.get('severity', ''),
-            size_hint_x=0.15,
-            color=color,
-            font_size=12
-        ))
-        self.add_widget(Label(
-            text=alert.get('status', ''),
-            size_hint_x=0.15,
-            color=color,
-            font_size=12
-        ))
-        self.add_widget(Label(
-            text=alert.get('source_ip') or '',
-            size_hint_x=0.15,
-            color=color,
-            font_size=12
-        ))
-        self.add_widget(Label(
-            text=alert.get('description', '')[:50],
-            size_hint_x=0.15,
-            color=color,
-            font_size=11
-        ))
+        fields = [
+            (event.get('timestamp', '')[:19], 0.15),
+            (event.get('source', ''), 0.08),
+            (event.get('category', ''), 0.13),
+            (event.get('severity', ''), 0.08),
+            (event.get('source_ip') or '', 0.12),
+            (event.get('username') or '', 0.10),
+            (event.get('action') or '', 0.19),
+            (event.get('outcome') or '', 0.08),
+            (event.get('raw', '')[:60], 0.07),
+        ]
 
-    def _severity_color(self, severity):
-        if severity == 'critical':
-            return (1, 0.2, 0.2, 1)
-        elif severity == 'high':
-            return (1, 0.5, 0.1, 1)
-        elif severity == 'medium':
-            return (1, 0.8, 0.2, 1)
-        return (1, 1, 1, 1)
+        for text, hint in fields:
+            self.add_widget(Label(
+                text=text,
+                size_hint_x=hint,
+                color=color,
+                font_size=11,
+                halign='left',
+                valign='middle'
+            ))
+
+
+class AlertsTab(BoxLayout):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = 'vertical'
+        self.padding = [10, 5]
+        self.spacing = 5
+
+        self.count_label = Label(
+            text='Alerts: 0',
+            size_hint_y=None,
+            height=28,
+            font_size=13,
+            color=(0.7, 0.7, 0.7, 1),
+            halign='left'
+        )
+        self.add_widget(self.count_label)
+
+        headers = [
+            ('Timestamp', 0.15),
+            ('Rule', 0.12),
+            ('Severity', 0.08),
+            ('Status', 0.08),
+            ('Source IP', 0.12),
+            ('Username', 0.10),
+            ('Description', 0.35),
+        ]
+        self.add_widget(make_header(headers))
+        self.add_widget(make_separator())
+
+        self.list = GridLayout(
+            cols=1,
+            size_hint_y=None,
+            spacing=1
+        )
+        self.list.bind(minimum_height=self.list.setter('height'))
+
+        scroll = ScrollView()
+        scroll.add_widget(self.list)
+        self.add_widget(scroll)
+
+    def refresh(self, alerts):
+        self.list.clear_widgets()
+        for alert in alerts:
+            self.list.add_widget(AlertRow(alert))
+            self.list.add_widget(make_separator())
+        self.count_label.text = f'Alerts: {len(alerts)}'
+
+
+class EventsTab(BoxLayout):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = 'vertical'
+        self.padding = [10, 5]
+        self.spacing = 5
+
+        self.count_label = Label(
+            text='Events: 0',
+            size_hint_y=None,
+            height=28,
+            font_size=13,
+            color=(0.7, 0.7, 0.7, 1),
+            halign='left'
+        )
+        self.add_widget(self.count_label)
+
+        headers = [
+            ('Timestamp', 0.15),
+            ('Source', 0.08),
+            ('Category', 0.13),
+            ('Severity', 0.08),
+            ('Source IP', 0.12),
+            ('Username', 0.10),
+            ('Action', 0.19),
+            ('Outcome', 0.08),
+            ('Raw', 0.07),
+        ]
+        self.add_widget(make_header(headers))
+        self.add_widget(make_separator())
+
+        self.list = GridLayout(
+            cols=1,
+            size_hint_y=None,
+            spacing=1
+        )
+        self.list.bind(minimum_height=self.list.setter('height'))
+
+        scroll = ScrollView()
+        scroll.add_widget(self.list)
+        self.add_widget(scroll)
+
+    def refresh(self, events):
+        self.list.clear_widgets()
+        for event in events:
+            self.list.add_widget(EventRow(event))
+            self.list.add_widget(make_separator())
+        self.count_label.text = f'Events: {len(events)}'
 
 
 class SiemDashboard(BoxLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.orientation = 'vertical'
-        self.padding = 10
-        self.spacing = 10
+        self.padding = [10, 10]
+        self.spacing = 8
 
         self.add_widget(Label(
             text='SIEM-Lite',
             size_hint_y=None,
-            height=40,
-            font_size=24,
-            bold=True
+            height=44,
+            font_size=26,
+            bold=True,
+            color=(1, 1, 1, 1)
         ))
 
-        self.add_widget(Label(
-            text='Alerts',
+        self.status_label = Label(
+            text='Last refresh: never',
             size_hint_y=None,
-            height=30,
-            font_size=16,
-            color=(1, 0.3, 0.3, 1)
-        ))
-
-        self.alert_list = GridLayout(
-            cols=1,
-            size_hint_y=None,
-            spacing=2
+            height=22,
+            font_size=11,
+            color=(0.5, 0.5, 0.5, 1)
         )
-        self.alert_list.bind(minimum_height=self.alert_list.setter('height'))
+        self.add_widget(self.status_label)
 
-        alert_scroll = ScrollView(size_hint_y=0.3)
-        alert_scroll.add_widget(self.alert_list)
-        self.add_widget(alert_scroll)
+        tabs = TabbedPanel(do_default_tab=False)
 
-        self.add_widget(Label(
-            text='Events',
-            size_hint_y=None,
-            height=30,
-            font_size=16,
-            color=(0.3, 0.7, 1, 1)
-        ))
+        alerts_tab = TabbedPanelItem(text='Alerts')
+        self.alerts_content = AlertsTab()
+        alerts_tab.add_widget(self.alerts_content)
+        tabs.add_widget(alerts_tab)
 
-        self.event_list = GridLayout(
-            cols=1,
-            size_hint_y=None,
-            spacing=2
-        )
-        self.event_list.bind(minimum_height=self.event_list.setter('height'))
+        events_tab = TabbedPanelItem(text='Events')
+        self.events_content = EventsTab()
+        events_tab.add_widget(self.events_content)
+        tabs.add_widget(events_tab)
 
-        event_scroll = ScrollView(size_hint_y=0.6)
-        event_scroll.add_widget(self.event_list)
-        self.add_widget(event_scroll)
+        self.add_widget(tabs)
 
         refresh_btn = Button(
             text='Refresh',
@@ -205,13 +284,12 @@ class SiemDashboard(BoxLayout):
         Clock.schedule_interval(self.refresh, 30)
 
     def refresh(self, *args):
-        self.alert_list.clear_widgets()
-        for alert in get_alerts():
-            self.alert_list.add_widget(AlertRow(alert))
-
-        self.event_list.clear_widgets()
-        for event in get_events():
-            self.event_list.add_widget(EventRow(event))
+        from datetime import datetime
+        alerts = get_alerts()
+        events = get_events()
+        self.alerts_content.refresh(alerts)
+        self.events_content.refresh(events)
+        self.status_label.text = f'Last refresh: {datetime.now().strftime("%H:%M:%S")}  |  Alerts: {len(alerts)}  |  Events: {len(events)}'
 
 
 class SiemApp(App):

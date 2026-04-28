@@ -34,6 +34,12 @@ except ImportError:
     sys.exit(1)
 
 
+def clean_ip(value):
+    if not value or str(value).strip() in ['-', '', 'None']:
+        return None
+    return str(value).strip()
+
+
 def format_event(event, log_type):
     event_id = event.EventID & 0xFFFF
     category = RELEVANT_EVENT_IDS.get(event_id)
@@ -56,12 +62,12 @@ def format_event(event, log_type):
 
     if event_id == 4625:
         username = strings[5] if len(strings) > 5 else None
-        source_ip = strings[19] if len(strings) > 19 else None
+        source_ip = clean_ip(strings[19]) if len(strings) > 19 else None
         action = 'logon_failure'
 
     elif event_id == 4624:
         username = strings[5] if len(strings) > 5 else None
-        source_ip = strings[18] if len(strings) > 18 else None
+        source_ip = clean_ip(strings[18]) if len(strings) > 18 else None
         action = 'logon_success'
 
     elif event_id == 4672:
@@ -70,15 +76,15 @@ def format_event(event, log_type):
 
     elif event_id == 4648:
         username = strings[5] if len(strings) > 5 else None
-        source_ip = strings[12] if len(strings) > 12 else None
+        source_ip = clean_ip(strings[12]) if len(strings) > 12 else None
         action = 'logon_explicit_credentials'
 
-        system_accounts = ['UMFD-0', 'UMFD-1', 'UMFD-2', 'UMFD-3', 'UMFD-4', 
-                        'DWM-1', 'DWM-2', 'Font Driver Host', 'Window Manager']
-        
+        system_accounts = ['UMFD-0', 'UMFD-1', 'UMFD-2', 'UMFD-3', 'UMFD-4',
+                           'DWM-1', 'DWM-2', 'Font Driver Host', 'Window Manager']
+
         if username in system_accounts:
             return None
-    
+
     raw = (
         f"EventID={event_id} "
         f"Source={event.SourceName} "

@@ -199,7 +199,7 @@ class WindowsParser(BaseParser):
             source='windows',
             category=category,
             severity=self.SEVERITY_MAP.get(category, 'info'),
-            source_ip=data.get('source_ip'),
+            source_ip=self._clean_ip(data.get('source_ip')),
             username=data.get('username'),
             action=data.get('action'),
             outcome='failure' if category == 'auth_failure' else 'success',
@@ -210,3 +210,7 @@ class WindowsParser(BaseParser):
                 'log_type': data.get('log_type'),
             }
         )
+    def _clean_ip(self, value):
+        if not value or value.strip() in ['-', '', 'None', '-']:
+            return None
+        return value.strip()
