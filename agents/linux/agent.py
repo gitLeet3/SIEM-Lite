@@ -2,8 +2,13 @@ import time
 import requests
 import os
 import sys
+import platform
 import subprocess
 import threading
+
+if platform.system() != 'Linux':
+    print("[!] This agent can only run on Linux.")
+    sys.exit(1)
 
 API_URL = "http://127.0.0.1:8000/api/ingest/"
 NGINX_LOG = "/var/log/nginx/access.log"

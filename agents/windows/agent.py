@@ -2,7 +2,12 @@ import time
 import requests
 import sys
 import json
+import platform
 from datetime import datetime
+
+if platform.system() != 'Windows':
+    print("[!] This agent can only run on Windows.")
+    sys.exit(1)
 
 API_URL = "http://192.168.88.128:8000/api/ingest/"
 POLL_INTERVAL = 5
