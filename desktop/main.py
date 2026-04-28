@@ -80,13 +80,13 @@ class AlertRow(BoxLayout):
         color = severity_color(alert.get('severity'))
 
         fields = [
-            (alert.get('created_at', '')[:19], 0.15),
-            (alert.get('rule', ''), 0.12),
-            (alert.get('severity', '').upper(), 0.08),
-            (alert.get('status', ''), 0.08),
-            (alert.get('source_ip') or '', 0.12),
+            (alert.get('created_at', '')[:19], 0.18),
+            (alert.get('rule', ''), 0.13),
+            (alert.get('severity', '').upper(), 0.09),
+            (alert.get('status', ''), 0.09),
+            (alert.get('source_ip') or '', 0.13),
             (alert.get('username') or '', 0.10),
-            (alert.get('description', ''), 0.35),
+            (alert.get('description', ''), 0.28),
         ]
 
         for text, hint in fields:
@@ -113,15 +113,14 @@ class EventRow(BoxLayout):
         color = severity_color(event.get('severity'))
 
         fields = [
-            (event.get('timestamp', '')[:19], 0.15),
+            (event.get('timestamp', '')[:19], 0.18),
             (event.get('source', ''), 0.08),
             (event.get('category', ''), 0.13),
             (event.get('severity', ''), 0.08),
-            (event.get('source_ip') or '', 0.12),
-            (event.get('username') or '', 0.10),
-            (event.get('action') or '', 0.19),
-            (event.get('outcome') or '', 0.08),
-            (event.get('raw', '')[:60], 0.07),
+            (event.get('source_ip') or '', 0.13),
+            (event.get('username') or '', 0.12),
+            (event.get('action') or '', 0.18),
+            (event.get('outcome') or '', 0.10),
         ]
 
         for text, hint in fields:
@@ -153,13 +152,13 @@ class AlertsTab(BoxLayout):
         self.add_widget(self.count_label)
 
         headers = [
-            ('Timestamp', 0.15),
-            ('Rule', 0.12),
-            ('Severity', 0.08),
-            ('Status', 0.08),
-            ('Source IP', 0.12),
+            ('Timestamp', 0.18),
+            ('Rule', 0.13),
+            ('Severity', 0.09),
+            ('Status', 0.09),
+            ('Source IP', 0.13),
             ('Username', 0.10),
-            ('Description', 0.35),
+            ('Description', 0.28),
         ]
         self.add_widget(make_header(headers))
         self.add_widget(make_separator())
@@ -201,15 +200,14 @@ class EventsTab(BoxLayout):
         self.add_widget(self.count_label)
 
         headers = [
-            ('Timestamp', 0.15),
+            ('Timestamp', 0.18),
             ('Source', 0.08),
             ('Category', 0.13),
             ('Severity', 0.08),
-            ('Source IP', 0.12),
-            ('Username', 0.10),
-            ('Action', 0.19),
-            ('Outcome', 0.08),
-            ('Raw', 0.07),
+            ('Source IP', 0.13),
+            ('Username', 0.12),
+            ('Action', 0.18),
+            ('Outcome', 0.10),
         ]
         self.add_widget(make_header(headers))
         self.add_widget(make_separator())

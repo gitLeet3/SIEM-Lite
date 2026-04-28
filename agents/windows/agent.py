@@ -84,7 +84,11 @@ def format_event(event, log_type):
 
         if username in system_accounts:
             return None
-
+        
+    NOISE_USERNAMES = ['SYSTEM', 'LOCAL SERVICE', 'NETWORK SERVICE']
+    if username in NOISE_USERNAMES and category == 'auth_success':
+        return None
+    
     raw = (
         f"EventID={event_id} "
         f"Source={event.SourceName} "
