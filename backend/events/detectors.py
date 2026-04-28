@@ -38,13 +38,13 @@ def detect_brute_force(window_minutes=5, threshold=5):
         if already_alerted:
             continue
 
-        sources = list(
+        sources = list(set(
             Event.objects.filter(
                 category='auth_failure',
                 source_ip=ip,
                 timestamp__gte=cutoff
-            ).values_list('source', flat=True).distinct()
-        )
+            ).values_list('source', flat=True)
+        ))
 
         Alert.objects.create(
             rule='brute_force',
