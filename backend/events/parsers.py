@@ -1,4 +1,5 @@
 import re
+import json
 from datetime import datetime
 from dataclasses import dataclass, field
 from typing import Optional
@@ -156,5 +157,56 @@ class NginxParser(BaseParser):
                 'bytes': int(match.group('bytes')),
                 'method': match.group('method'),
                 'path': path,
+            }
+        )
+
+class WindowsParser(BaseParser):
+
+    SEVERITY_MAP = {
+        'auth_failure': 'warning',
+        'auth_success': 'info',
+        'error': 'warning',
+    }
+
+    EVENT_DESCRIPTIONS = {
+        4625: 'Failed logon attempt',
+        4624: 'Successful logon',
+        4672: 'Special privileges assigned',
+        4648: 'Logon attempt with explicit credentials',
+        4719: 'System audit policy changed',
+        4964: 'Special groups assigned to new logon',
+    }
+
+    def parse(self, raw_line: str) -> Optional[NormalizedEvent]:
+        try:
+            data = json.loads(raw_line)
+        except Exception:
+            return None
+
+        category = data.get('category')
+        if not category:
+            return None
+
+        try:
+            timestamp = datetime.fromisoformat(data.get('timestamp'))
+        except Exception:
+            timestamp = datetime.now()
+
+        event_id = data.get('event_id')
+
+        return NormalizedEvent(
+            timestamp=timestamp,
+            source='windows',
+            category=category,
+            severity=self.SEVERITY_MAP.get(category, 'info'),
+            source_ip=data.get('source_ip'),
+            username=data.get('username'),
+            action=data.get('action'),
+            outcome='failure' if category == 'auth_failure' else 'success',
+            raw=data.get('raw', raw_line),
+            parsed={
+                'event_id': event_id,
+                'description': self.EVENT_DESCRIPTIONS.get(event_id, ''),
+                'log_type': data.get('log_type'),
             }
         )

@@ -15,5 +15,5 @@ class AlertSerializer(serializers.ModelSerializer):
 
 
 class RawLogSerializer(serializers.Serializer):
-    source = serializers.ChoiceField(choices=['nginx', 'pam', 'app'])
+    source = serializers.ChoiceField(choices=['nginx', 'pam', 'app', 'windows'])
     line = serializers.CharField()

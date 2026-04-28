@@ -5,12 +5,13 @@ from rest_framework.response import Response
 from django.utils import timezone
 from .models import Event, Alert
 from .serializers import EventSerializer, AlertSerializer, RawLogSerializer
-from .parsers import PAMParser, NginxParser
+from .parsers import PAMParser, NginxParser, WindowsParser
 
 
 PARSERS = {
     'pam': PAMParser(),
     'nginx': NginxParser(),
+    'windows': WindowsParser(),
 }
 
 
