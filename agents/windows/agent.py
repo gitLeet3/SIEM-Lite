@@ -63,6 +63,16 @@ def format_event(event, log_type):
         username = strings[1] if len(strings) > 1 else None
         action = 'privilege_assigned'
 
+    elif event_id == 4648:
+        username = strings[5] if len(strings) > 5 else None
+        source_ip = strings[12] if len(strings) > 12 else None
+        action = 'logon_explicit_credentials'
+
+        system_accounts = ['UMFD-0', 'UMFD-1', 'UMFD-2', 'UMFD-3', 'UMFD-4', 
+                        'DWM-1', 'DWM-2', 'Font Driver Host', 'Window Manager']
+    if username in system_accounts:
+        return None
+    
     raw = (
         f"EventID={event_id} "
         f"Source={event.SourceName} "
