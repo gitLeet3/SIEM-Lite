@@ -70,8 +70,9 @@ def format_event(event, log_type):
 
         system_accounts = ['UMFD-0', 'UMFD-1', 'UMFD-2', 'UMFD-3', 'UMFD-4', 
                         'DWM-1', 'DWM-2', 'Font Driver Host', 'Window Manager']
-    if username in system_accounts:
-        return None
+        
+        if username in system_accounts:
+            return None
     
     raw = (
         f"EventID={event_id} "
