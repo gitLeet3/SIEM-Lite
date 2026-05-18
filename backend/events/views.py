@@ -64,3 +64,21 @@ class AlertViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Alert.objects.all()
     serializer_class = AlertSerializer
     filterset_fields = ['severity', 'status', 'rule']
+
+@api_view(['PATCH'])
+def update_alert_status(request, alert_id):
+    try:
+        alert = Alert.objects.get(id=alert_id)
+    except Alert.DoesNotExist:
+        return Response({'error': 'Alert not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    new_status = request.data.get('status')
+    if new_status not in ['open', 'acknowledged', 'resolved']:
+        return Response(
+            {'error': 'Invalid status. Must be open, acknowledged or resolved'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    alert.status = new_status
+    alert.save()
+    return Response(AlertSerializer(alert).data, status=status.HTTP_200_OK)

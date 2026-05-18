@@ -6,6 +6,7 @@ from kivy.uix.button import Button
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
+from kivy.uix.popup import Popup
 from kivy.clock import Clock
 from kivy.graphics import Color, Rectangle
 
@@ -69,13 +70,15 @@ def make_separator():
 
 
 class AlertRow(BoxLayout):
-    def __init__(self, alert, **kwargs):
+    def __init__(self, alert, on_status_change=None, **kwargs):
         super().__init__(**kwargs)
         self.orientation = 'horizontal'
         self.size_hint_y = None
         self.height = 44
         self.padding = [5, 4]
         self.spacing = 5
+        self.alert = alert
+        self.on_status_change = on_status_change
 
         color = severity_color(alert.get('severity'))
 
@@ -99,6 +102,98 @@ class AlertRow(BoxLayout):
                 halign='left',
                 valign='middle'
             ))
+
+        self.bind(on_touch_down=self.on_click)
+
+    def on_click(self, instance, touch):
+        if self.collide_point(*touch.pos):
+            self.show_action_popup()
+
+    def show_action_popup(self):
+        alert = self.alert
+        content = BoxLayout(orientation='vertical', padding=10, spacing=10)
+
+        content.add_widget(Label(
+            text=f"Alert: {alert.get('rule', '')}",
+            font_size=14,
+            bold=True,
+            size_hint_y=None,
+            height=30
+        ))
+        content.add_widget(Label(
+            text=f"IP: {alert.get('source_ip') or 'N/A'}",
+            font_size=12,
+            size_hint_y=None,
+            height=24
+        ))
+        content.add_widget(Label(
+            text=f"Status: {alert.get('status', '')}",
+            font_size=12,
+            size_hint_y=None,
+            height=24
+        ))
+        content.add_widget(Label(
+            text=alert.get('description', ''),
+            font_size=11,
+            size_hint_y=None,
+            height=40
+        ))
+
+        buttons = BoxLayout(
+            orientation='horizontal',
+            size_hint_y=None,
+            height=44,
+            spacing=10
+        )
+
+        popup = Popup(
+            title='Alert Action',
+            content=content,
+            size_hint=(0.5, 0.5)
+        )
+
+        def make_status_handler(new_status):
+            def handler(instance):
+                self.update_status(new_status)
+                popup.dismiss()
+            return handler
+
+        if alert.get('status') != 'acknowledged':
+            ack_btn = Button(text='Acknowledge')
+            ack_btn.bind(on_press=make_status_handler('acknowledged'))
+            buttons.add_widget(ack_btn)
+
+        if alert.get('status') != 'resolved':
+            res_btn = Button(text='Resolve')
+            res_btn.bind(on_press=make_status_handler('resolved'))
+            buttons.add_widget(res_btn)
+
+        if alert.get('status') != 'open':
+            reopen_btn = Button(text='Reopen')
+            reopen_btn.bind(on_press=make_status_handler('open'))
+            buttons.add_widget(reopen_btn)
+
+        close_btn = Button(text='Close')
+        close_btn.bind(on_press=popup.dismiss)
+        buttons.add_widget(close_btn)
+
+        content.add_widget(buttons)
+        popup.open()
+
+    def update_status(self, new_status):
+        alert_id = self.alert.get('id')
+        try:
+            response = requests.patch(
+                f"{API_BASE}/alerts/{alert_id}/status/",
+                json={'status': new_status},
+                timeout=5
+            )
+            if response.status_code == 200:
+                self.alert['status'] = new_status
+                if self.on_status_change:
+                    self.on_status_change()
+        except Exception as e:
+            print(f"[!] Failed to update alert status: {e}")
 
 
 class EventRow(BoxLayout):
@@ -174,10 +269,10 @@ class AlertsTab(BoxLayout):
         scroll.add_widget(self.list)
         self.add_widget(scroll)
 
-    def refresh(self, alerts):
+    def refresh(self, alerts, on_status_change=None):
         self.list.clear_widgets()
         for alert in alerts:
-            self.list.add_widget(AlertRow(alert))
+            self.list.add_widget(AlertRow(alert, on_status_change=on_status_change))
             self.list.add_widget(make_separator())
         self.count_label.text = f'Alerts: {len(alerts)}'
 
@@ -285,7 +380,7 @@ class SiemDashboard(BoxLayout):
         from datetime import datetime
         alerts = get_alerts()
         events = get_events()
-        self.alerts_content.refresh(alerts)
+        self.alerts_content.refresh(alerts, on_status_change=self.refresh)
         self.events_content.refresh(events)
         self.status_label.text = f'Last refresh: {datetime.now().strftime("%H:%M:%S")}  |  Alerts: {len(alerts)}  |  Events: {len(events)}'
 

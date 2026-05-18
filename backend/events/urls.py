@@ -9,4 +9,5 @@ router.register(r'alerts', views.AlertViewSet)
 urlpatterns = [
     path('', include(router.urls)),
     path('ingest/', views.ingest, name='ingest'),
+    path('alerts/<int:alert_id>/status/', views.update_alert_status, name='update_alert_status'),
 ]
