@@ -214,3 +214,74 @@ class WindowsParser(BaseParser):
         if not value or value.strip() in ['-', '', 'None', '-']:
             return None
         return value.strip()
+
+class UFWParser(BaseParser):
+
+    BLOCK_PATTERN = re.compile(
+        r'(?P<month>\w+)\s+(?P<day>\d+)\s+(?P<time>\S+).*'
+        r'\[UFW BLOCK\].*'
+        r'SRC=(?P<src>\S+).*'
+        r'DST=(?P<dst>\S+).*'
+        r'PROTO=(?P<proto>\S+).*'
+        r'DPT=(?P<dpt>\d+)'
+    )
+
+    SENSITIVE_PORTS = {
+        22: 'SSH',
+        23: 'Telnet',
+        80: 'HTTP',
+        443: 'HTTPS',
+        445: 'SMB',
+        3306: 'MySQL',
+        5432: 'PostgreSQL',
+        6379: 'Redis',
+        8080: 'HTTP-Alt',
+        27017: 'MongoDB',
+    }
+
+    def _severity(self, dpt: int) -> str:
+        if dpt in self.SENSITIVE_PORTS:
+            return 'warning'
+        return 'info'
+
+    def parse(self, raw_line: str) -> Optional[NormalizedEvent]:
+        match = self.BLOCK_PATTERN.search(raw_line)
+        if not match:
+            return None
+
+        try:
+            timestamp = self._parse_timestamp(
+                match.group('month'),
+                match.group('day'),
+                match.group('time')
+            )
+        except Exception:
+            timestamp = datetime.now()
+
+        dpt = int(match.group('dpt'))
+        src = match.group('src')
+        proto = match.group('proto')
+        service = self.SENSITIVE_PORTS.get(dpt, f'port {dpt}')
+
+        return NormalizedEvent(
+            timestamp=timestamp,
+            source='ufw',
+            category='access',
+            severity=self._severity(dpt),
+            source_ip=src,
+            action=f"{proto} connection attempt to {service}",
+            outcome='failure',
+            raw=raw_line.strip(),
+            parsed={
+                'destination_ip': match.group('dst'),
+                'protocol': proto,
+                'destination_port': dpt,
+                'service': service,
+            }
+        )
+
+    def _parse_timestamp(self, month, day, time):
+        year = datetime.now().year
+        return datetime.strptime(
+            f"{year} {month} {day} {time}", "%Y %b %d %H:%M:%S"
+        )

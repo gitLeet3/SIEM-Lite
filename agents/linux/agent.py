@@ -58,6 +58,18 @@ def tail_journal(source):
         if line:
             send_line('pam', line)
 
+def tail_ufw():
+    print(f"[*] Watching UFW firewall logs")
+    process = subprocess.Popen(
+        ['journalctl', '-k', '-f', '-o', 'short', '-n', '0', '--grep', 'UFW BLOCK'],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True
+    )
+    for line in process.stdout:
+        line = line.strip()
+        if line and 'UFW BLOCK' in line:
+            send_line('ufw', line)
 
 def run():
     print(f"[*] Starting Linux agent")
@@ -72,6 +84,12 @@ def run():
     )
     threads.append(journal_thread)
 
+    ufw_thread = threading.Thread(
+        target=tail_ufw,
+        daemon=True
+    )
+    threads.append(ufw_thread)
+    
     if os.path.exists(NGINX_LOG):
         nginx_thread = threading.Thread(
             target=tail_file,

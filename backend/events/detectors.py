@@ -7,7 +7,60 @@ def run_all_detectors():
     detect_brute_force()
     detect_admin_probing()
     detect_error_spike()
+    detect_port_scan()
+    
+def detect_port_scan(window_minutes=5, threshold=5):
+    cutoff = datetime.now() - timedelta(minutes=window_minutes)
 
+    results = Event.objects.filter(
+        source='ufw',
+        timestamp__gte=cutoff
+    ).values('source_ip').annotate(
+        ports=Count('parsed__destination_port', distinct=True)
+    ).filter(
+        ports__gte=threshold
+    )
+
+    for result in results:
+        ip = result['source_ip']
+        ports = result['ports']
+
+        if not ip:
+            continue
+
+        already_alerted = Alert.objects.filter(
+            rule='port_scan',
+            source_ip=ip,
+            status='open',
+            created_at__gte=cutoff
+        ).exists()
+
+        if already_alerted:
+            continue
+
+        probed_ports = list(
+            Event.objects.filter(
+                source='ufw',
+                source_ip=ip,
+                timestamp__gte=cutoff
+            ).values_list('parsed__destination_port', flat=True).distinct()
+        )
+
+        Alert.objects.create(
+            rule='port_scan',
+            severity='high',
+            source_ip=ip,
+            description=(
+                f"Port scan detected from {ip}. "
+                f"{ports} distinct ports probed within the last {window_minutes} minutes."
+            ),
+            evidence={
+                'distinct_ports': ports,
+                'window_minutes': window_minutes,
+                'threshold': threshold,
+                'ports_probed': probed_ports,
+            }
+        )
 
 def detect_brute_force(window_minutes=5, threshold=5):
     cutoff = datetime.now() - timedelta(minutes=window_minutes)
